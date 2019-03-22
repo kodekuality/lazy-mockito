@@ -1,0 +1,115 @@
+plugins {
+    id "java"
+    id "jacoco"
+    id 'maven-publish'
+    id "com.jfrog.bintray" version "1.8.4"
+}
+
+
+group 'org.kodekuality'
+version 'SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    compile group: 'org.mockito', name: 'mockito-core', version: '1.9.5'
+
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled false
+        html.enabled false
+        xml.destination "${buildDir}/reports/jacoco/report.xml"
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+bintray {
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['MyPublication']
+    publish = true
+    pkg {
+        repo = 'maven'
+        name = 'lazy-mockito'
+        userOrg = 'kodekuality'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/kodekuality/lazy-mockito.git'
+        version {
+            name = System.getenv('TRAVIS_TAG') ?: "SNAPSHOT"
+            released  = new Date()
+            vcsTag = System.getenv('TRAVIS_TAG') ?: "SNAPSHOT"
+            gpg {
+                sign = true
+            }
+        }
+    }
+}
+
+def pomConfig = {
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "joao"
+            name "Joao Melo"
+            email "joao.silva.de.melo@gmail.com"
+        }
+    }
+
+    scm {
+        url "https://github.com/kodekuality/lazy-mockito"
+    }
+}
+
+publishing {
+    publications {
+        MyPublication(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+            groupId 'org.kodekuality'
+            artifactId 'lazy-mockito'
+            version System.getenv('TRAVIS_TAG') ?: "SNAPSHOT"
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('name', 'Deep Spy')
+                root.appendNode('url', 'http://kodekuality.org')
+                root.children().last() + pomConfig
+                root.dependencies.'*'.findAll() {
+                    it.scope.text() == 'runtime' && project.configurations.compile.allDependencies.find { dep ->
+                        dep.name == it.artifactId.text()
+                    }
+                }.each() {
+                    it.scope*.value = 'compile'
+                }
+            }
+        }
+    }
+}
