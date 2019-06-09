@@ -4,7 +4,6 @@
 
 Lazy Mockito enables you to prime behaviour which gets resolved at runtime. 
 It's built on top of [mockito](https://site.mockito.org/) as an easier way to define lazy behaviour on top of the Answer API.
-Specially useful for [deep spying](https://github.com/kodekuality/deep-spy).
 
 ## Build
 
